@@ -1,0 +1,64 @@
+from flask import Flask, request, jsonify
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
+from bson import json_util
+
+app = Flask(__name__)
+
+uri = "mongodb+srv://<username>:<password>@cluster0.qjvts7o.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+
+client = MongoClient(uri, server_api=ServerApi('1'),connectTimeoutMS=60000)
+
+try:
+    client.admin.command('ping')
+    print("Pinged your deployment. You successfully connected to MongoDB!")
+except Exception as e:
+    print(e)
+
+try:
+    name=input("Enter db name: ")
+    db_names = client.list_database_names()
+    if name not in db_names:
+        db = client[name]
+        print("Database created:", db.name)
+    else:
+        print("Database already exists.")
+except Exception as e:
+    print(e)
+
+try:
+    name=input("Enter collection name: ")
+    db = client[name]
+    collection_names = db.list_collection_names()
+    if name not in collection_names:
+        collection = db[name]
+        print("Collection created:", collection.name)
+    else:
+        collection = db[name]
+        print("Collection already exists.")
+except Exception as e:
+    print(e)
+
+def delete_query():
+    num_col = int(input("How many columns do you want to delete? "))
+    query = {}
+    for i in range(num_col):
+        column_name = input(f"Enter name for column {i+1}: ")
+        value = input(f"Enter value for column {column_name}: ")
+        query[column_name] = value
+    return query
+
+query = delete_query()
+
+@app.route('/delete', methods=['POST'])
+def delete():
+    result = collection.delete_many(query)
+    return jsonify({'message': f'Deleted {result.deleted_count} documents successfully'}), 200
+
+@app.route('/show', methods=['GET'])
+def show():
+    data = collection.find()
+    return jsonify(json_util.dumps(data)), 200
+
+if __name__ == '__main__':
+    app.run(debug=False)
