@@ -1,0 +1,78 @@
+from flask import Flask, request, jsonify
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
+from bson import json_util
+
+app = Flask(__name__)
+
+uri = "mongodb+srv://<username>:<password>@cluster0.qjvts7o.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+
+client = MongoClient(uri, server_api=ServerApi('1'),connectTimeoutMS=60000)
+
+try:
+    client.admin.command('ping')
+    print("Pinged your deployment. You successfully connected to MongoDB!")
+except Exception as e:
+    print(e)
+
+try:
+    name=input("Enter db name: ")
+    db_names = client.list_database_names()
+    if name not in db_names:
+        db = client[name]
+        print("Database created:", db.name)
+    else:
+        print("Database already exists.")
+except Exception as e:
+    print(e)
+
+
+try:
+    name=input("Enter collection name: ")
+    db = client[name]
+    collection_names = db.list_collection_names()
+    if name not in collection_names:
+        collection = db[name]
+        print("Collection created:", collection.name)
+    else:
+        collection = db[name]
+        print("Collection already exists.")
+except Exception as e:
+    print(e)
+
+def user_input():
+    num_col = int(input("How many columns do you want to insert? "))
+    columns = []
+    for i in range(num_col):
+        column_name = input(f"Enter name for column {i+1}: ")
+        columns.append(column_name)
+    num_doc = int(input("How much data do you want to insert? "))
+    data = []
+    for i in range(num_doc):
+        document = []
+        for column in columns:
+            value = input(f"Enter {column} for document {i+1}: ")
+            document.append(value)
+        data.append(document)   
+    return data, columns
+
+data, columns = user_input()
+
+@app.route('/insert', methods=['POST'])
+def insert():
+    data_to_insert = []
+    for document in data:
+        doc = {}
+        for i in range(len(columns)):
+            doc[columns[i]] = document[i]
+        data_to_insert.append(doc)
+    collection.insert_many(data_to_insert)
+    return jsonify({'message': 'Data inserted successfully'}), 200
+
+@app.route('/show', methods=['GET'])
+def show():
+    data = collection.find()
+    return jsonify(json_util.dumps(data)), 200
+
+if __name__ == '__main__':
+    app.run(debug=False)
